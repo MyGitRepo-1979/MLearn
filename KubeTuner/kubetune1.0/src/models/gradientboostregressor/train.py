@@ -6,6 +6,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score
 import matplotlib.pyplot as plt
 from pathlib import Path
+import evaluate as evaluate
+import joblib
 
 # -----------------------------
 # 1. Load and Preprocess Data
@@ -75,67 +77,15 @@ param_grid = {
 gbm = GradientBoostingRegressor(random_state=42)
 grid_search = GridSearchCV(estimator=gbm, param_grid=param_grid, cv=5, scoring='r2', n_jobs=-1)
 grid_search.fit(X_train, y_train)
-best_model = grid_search.best_estimator_
+model = grid_search.best_estimator_
 
-# -----------------------------
-# 6. Evaluate the Model
-# -----------------------------
-y_pred = best_model.predict(X_test)
-mse = mean_squared_error(y_test, y_pred)
-r2 = r2_score(y_test, y_pred)
+# Save the  model
+model_path = Path(__file__).resolve().parents[0] / 'output' / 'gradient_boosting_model.pkl'
+model_path.parent.mkdir(parents=True, exist_ok=True)  # Ensure the directory exists
+joblib.dump(model, model_path)
 
-print("Best Parameters:", grid_search.best_params_)
-print(f"Mean Squared Error: {mse:.4f}")
-print(f"R^2 Score: {r2:.4f}")
-
-# -----------------------------
-# 7. Get Predictions and Reverse Transformation
-# -----------------------------
-# Predict on the entire dataset (log scale), then reverse the log transform.
-df['predicted_log_opt_memRequest'] = best_model.predict(X)
-df['predicted_opt_memRequest_bytes'] = np.expm1(df['predicted_log_opt_memRequest'])
-
-# Calculate the current memRequest in bytes (for comparison)
-df['memRequest_bytes'] = df['memRequest'] * 1048576
-
-# Compute the reduction percent offered by the model's prediction
-df['reduction_percent'] = ((df['memRequest_bytes'] - df['predicted_opt_memRequest_bytes']) /
-                           df['memRequest_bytes'] * 100).round(2)
-
-# Create a suggestion string (convert predicted value back to MB)
-df['suggestion'] = np.where(
-    df['reduction_percent'] > 0,
-    'Reduce request to ' + (df['predicted_opt_memRequest_bytes'] / 1048576).round(2).astype(str) + ' Bytes',
-    'No change needed'
-)
-
-# -----------------------------
-# 8. Export the Results to Excel
-# -----------------------------
-# Define columns for export
-export_cols = ['memUsage', 'memRequest', 'recommendedRequest', 'opt_memRequest', 
-               'memRequest_bytes', 'predicted_opt_memRequest_bytes', 'reduction_percent', 'suggestion']
+# evaluate model
+evaluate.evaluate_model(X_test, y_test)
 
 
-# output_file_path = base_dir / 'output' / 'output' / 'memory_request_predictions_optimized.xlsx'
-# print (f"Saving predictions to {output_file_path}")
 
-base_dir_output = Path(__file__).resolve().parents[0]
-output_file_path = base_dir_output / 'output' / 'memory_request_predictions_optimized.xlsx'
-
-
-df[export_cols].to_excel(output_file_path, index=False)
-print(f"Predictions saved to {output_file_path}")
-
-# -----------------------------
-# 9. Plot Actual vs. Predicted Optimized Memory Request (bytes)
-# -----------------------------
-plt.figure(figsize=(10,6))
-plt.scatter(df['memRequest_bytes'], df['predicted_opt_memRequest_bytes'], alpha=0.5)
-plt.plot([df['memRequest_bytes'].min(), df['memRequest_bytes'].max()],
-         [df['memRequest_bytes'].min(), df['memRequest_bytes'].max()], 'r--')
-plt.xlabel('Current Memory Request (bytes)')
-plt.ylabel('Predicted Optimized Memory Request (bytes)')
-plt.title('Actual vs. Predicted Optimized Memory Request')
-plt.grid(True)
-plt.show()
