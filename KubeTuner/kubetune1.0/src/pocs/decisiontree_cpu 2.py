@@ -1,0 +1,117 @@
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.metrics import mean_squared_error, r2_score
+import matplotlib.pyplot as plt
+
+# Load and preprocess data
+df = pd.read_excel(
+    r'D:\Personal\Soumalya\Internship\MAY_2025\python\week_1\Soumalya\AKS_Cost_Reduction\my-python-project\data\aks_02_data_mb.xlsx',
+    engine='openpyxl'
+)
+df = df[(df['cpuUsage'] > 0) & (df['cpuRequest'] > 0)]
+
+# Prepare features and target
+y = df['cpuUsage']
+X = df[['cpuRequest']]
+
+# Train-test split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Train model
+dt = DecisionTreeRegressor(random_state=42)
+dt.fit(X_train, y_train)
+
+# Evaluate model
+y_pred = dt.predict(X_test)
+print(f"Mean Squared Error: {mean_squared_error(y_test, y_pred):.4f}")
+print(f"R^2 Score: {r2_score(y_test, y_pred):.4f}")
+
+# Predictions and rounding
+df['predicted_cpurequest'] = dt.predict(X).round(3)
+df['cpuusage'] = df['cpuUsage'].round(3)
+
+# Calculate final_rec_cpu_req as per your logic
+df['final_rec_cpu_req'] = np.where(
+    df['predicted_cpurequest'] < df['cpuusage'],
+    (df['cpuusage'] + 0.2 * df['cpuusage']).round(3),
+    (df['predicted_cpurequest'] + 0.2 * df['predicted_cpurequest']).round(3)
+)
+
+# Rename columns for export
+df_export = df.rename(columns={
+    'pod': 'podname',
+    'cpuRequest': 'cpurequest'
+})
+
+# Select and order the columns as you want
+export_cols = [
+    'podname', 'cpurequest', 'cpuusage', 'predicted_cpurequest', 'final_rec_cpu_req'
+]
+
+# Export to Excel
+df_export[export_cols].to_excel(
+    r'D:\Personal\Soumalya\Internship\MAY_2025\python\week_1\Soumalya\AKS_Cost_Reduction\my-python-project\output\cpurequest_predictions_optimized_decisiontree.xlsx',
+    index=False
+)
+
+# Visualizations
+
+# 1. Bar plot: Current vs Predicted vs Final Recommended CPU Request (Sample)
+sample = df_export.sample(min(20, len(df_export)), random_state=42).reset_index(drop=True)
+x = np.arange(len(sample))
+bar_width = 0.25
+
+plt.figure(figsize=(14, 6))
+plt.bar(x - bar_width, sample['cpurequest'], width=bar_width, label='Current Request', color='#1976D2')
+plt.bar(x, sample['predicted_cpurequest'], width=bar_width, label='Predicted Request', color='#43A047')
+plt.bar(x + bar_width, sample['final_rec_cpu_req'], width=bar_width, label='Final Recommended', color='#FFA000')
+plt.xticks(x, sample['podname'], rotation=45, ha='right')
+plt.xlabel('Pod')
+plt.ylabel('CPU')
+plt.title('Current vs Predicted vs Final Recommended CPU Request (Sample)')
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+# 2. Scatter plot: CPU Usage vs CPU Requests
+plt.figure(figsize=(7, 5))
+plt.scatter(df_export['cpuusage'], df_export['cpurequest'], alpha=0.5, label='Current')
+plt.scatter(df_export['cpuusage'], df_export['predicted_cpurequest'], alpha=0.5, label='Predicted')
+plt.scatter(df_export['cpuusage'], df_export['final_rec_cpu_req'], alpha=0.5, label='Final Recommended')
+plt.xlabel('CPU Usage')
+plt.ylabel('CPU Request')
+plt.title('CPU Usage vs Requests')
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+# 3. Pie chart: Proportion of Pods with Increased vs Decreased Final CPU Request
+increase_count = (df_export['final_rec_cpu_req'] > df_export['cpurequest']).sum()
+decrease_count = (df_export['final_rec_cpu_req'] < df_export['cpurequest']).sum()
+equal_count = (df_export['final_rec_cpu_req'] == df_export['cpurequest']).sum()
+
+labels = ['Increase', 'Decrease', 'No Change']
+sizes = [increase_count, decrease_count, equal_count]
+colors = ['#FFA000', '#43A047', '#1976D2']
+
+plt.figure(figsize=(6, 6))
+plt.pie(sizes, labels=labels, autopct='%1.1f%%', colors=colors, startangle=140, explode=(0.05, 0.05, 0.05))
+plt.title('Pods: Final Recommended CPU vs Current Request')
+plt.tight_layout()
+plt.show()
+
+# 4. Cumulative savings plot
+df_export['savings_CPU'] = df_export['cpurequest'] - df_export['final_rec_cpu_req']
+df_export['savings_CPU'] = df_export['savings_CPU'].clip(lower=0)
+df_sorted = df_export.sort_values('savings_CPU', ascending=False)
+df_sorted['cumulative_savings'] = df_sorted['savings_CPU'].cumsum()
+plt.figure(figsize=(10, 5))
+plt.plot(df_sorted['cumulative_savings'].values, color='purple')
+plt.xlabel('Pods (sorted by savings)')
+plt.ylabel('Cumulative Savings (CPU)')
+plt.title('Cumulative CPU Savings if All Suggestions Applied')
+plt.grid(True)
+plt.tight_layout()
+plt.show()
