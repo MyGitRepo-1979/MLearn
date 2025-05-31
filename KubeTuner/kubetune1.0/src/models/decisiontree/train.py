@@ -14,7 +14,6 @@ def train_memory_model():
     # -----------------------------
     # 1. Load and Preprocess Data
     # -----------------------------
-
     # Path to your Excel file
     base_dir_input = Path(__file__).resolve().parents[3]
     file_path = base_dir_input / 'data' / 'aks_02_data_mb.xlsx'
@@ -23,16 +22,26 @@ def train_memory_model():
 
     # Remove rows with zeros to avoid log errors
     df = df[(df['memUsageMB'] > 0) & (df['memRequestMB'] > 0)]
-    # Prepare features and target 
+    # Feature engineering
+    df['memUtilization'] = df['memUsageMB'] / df['memRequestMB']
+    feature_cols = ['memRequestMB', 'memUtilization']  # Add more if available
+
     y = df['memUsageMB']
-    X = df[['memRequestMB']]
+    X = df[feature_cols]
 
     # Train-test split
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # Train model
-    model = DecisionTreeRegressor(random_state=42)
-    model.fit(X_train, y_train)
+    # Hyperparameter tuning
+    from sklearn.model_selection import GridSearchCV
+    param_grid = {
+        'max_depth': [3, 5, 7, 10, None],
+        'min_samples_split': [2, 5, 10],
+        'min_samples_leaf': [1, 2, 4]
+    }
+    grid_search = GridSearchCV(DecisionTreeRegressor(random_state=42), param_grid, cv=5, scoring='neg_mean_squared_error')
+    grid_search.fit(X_train, y_train)
+    model = grid_search.best_estimator_
 
     # Save the  model
     model_path = Path(__file__).resolve().parents[0] / 'output' / 'kubetune_dt_model_memoryusage.pkl'
@@ -62,9 +71,16 @@ def train_cpu_model():
     # Train-test split
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # Train model
-    model = DecisionTreeRegressor(random_state=42)
-    model.fit(X_train, y_train)
+    # Hyperparameter tuning
+    from sklearn.model_selection import GridSearchCV
+    param_grid = {
+        'max_depth': [3, 5, 7, 10, None],
+        'min_samples_split': [2, 5, 10],
+        'min_samples_leaf': [1, 2, 4]
+    }
+    grid_search = GridSearchCV(DecisionTreeRegressor(random_state=42), param_grid, cv=5, scoring='neg_mean_squared_error')
+    grid_search.fit(X_train, y_train)
+    model = grid_search.best_estimator_
 
     # Save the  model
     model_path = Path(__file__).resolve().parents[0] / 'output' / 'kubetune_dt_model_cpuusage.pkl'
@@ -85,6 +101,6 @@ if __name__ == "__main__":
     print("Training & Evaluating Decision Tree Models for CPU Usage...")
     train_cpu_model()
     print("------------------------------")
-
+    
 
 
