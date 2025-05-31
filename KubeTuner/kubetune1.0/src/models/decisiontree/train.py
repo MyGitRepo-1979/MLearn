@@ -64,9 +64,12 @@ def train_cpu_model():
     # Remove rows with zeros to avoid log errors
     df = df[(df['cpuUsage'] > 0) & (df['cpuRequest'] > 0)]
 
-    # Prepare features and target
+    df['cpuUtilization'] = df['cpuUsage'] / df['cpuRequest']
+    feature_cols = ['cpuRequest', 'cpuUtilization']  # Add more if available
+
     y = df['cpuUsage']
-    X = df[['cpuRequest']]
+    X = df[feature_cols]
+
 
     # Train-test split
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
