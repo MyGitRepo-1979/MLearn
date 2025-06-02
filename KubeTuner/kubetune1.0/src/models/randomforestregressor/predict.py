@@ -66,7 +66,7 @@ def predict_memory_model():
 
       
     # Load the model
-    model_file_path = Path(__file__).resolve().parents[0] / 'output' / 'kubetune_rf_model_memoryusage.pkl'
+    model_file_path = Path(__file__).resolve().parents[0] / 'output' / 'kubetune_rfr_model_memoryusage.pkl'
     try:
         model = joblib.load(model_file_path)
     except FileNotFoundError:
@@ -184,7 +184,7 @@ def predict_cpu_model():
     X = df[feature_cols]
 
     # Load the model
-    model_file_path = Path(__file__).resolve().parents[0] / 'output' / 'kubetune_rf_model_cpuusage.pkl'
+    model_file_path = Path(__file__).resolve().parents[0] / 'output' / 'kubetune_rfr_model_cpuusage.pkl'
     try:
         model = joblib.load(model_file_path)
     except FileNotFoundError:
