@@ -3,8 +3,6 @@ import numpy as np
 from pathlib import Path
 import joblib
 import matplotlib.pyplot as plt
-from sklearn.discriminant_analysis import StandardScaler
-
 
 def plot_predict_memory_model(df_export,df):
     # 1. Bar plot: Current vs Predicted vs Final Recommended Memory Request (Sample)
@@ -69,7 +67,11 @@ def predict_memory_model():
       
     # Load the model
     model_file_path = Path(__file__).resolve().parents[0] / 'output' / 'kubetune_dt_model_memoryusage.pkl'
-    model = joblib.load(model_file_path)
+    try:
+        model = joblib.load(model_file_path)
+    except FileNotFoundError:
+        print(f"Model file not found: {model_file_path}")
+        return
 
 
     # Predictions and suggestions
@@ -183,7 +185,11 @@ def predict_cpu_model():
 
     # Load the model
     model_file_path = Path(__file__).resolve().parents[0] / 'output' / 'kubetune_dt_model_cpuusage.pkl'
-    model = joblib.load(model_file_path)
+    try:
+        model = joblib.load(model_file_path)
+    except FileNotFoundError:
+        print(f"Model file not found: {model_file_path}")
+        return
 
     # Predictions and suggestions
     df['predicted_cpurequest'] = model.predict(X)
@@ -215,4 +221,4 @@ def predict_cpu_model():
 
 if __name__ == "__main__":
     predict_memory_model()
-    #predict_cpu_model()
+    predict_cpu_model()
