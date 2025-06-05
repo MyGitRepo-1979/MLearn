@@ -82,10 +82,10 @@ def train_cpu_model():
 
 if __name__ == "__main__":
     print("------------------------------")
-    print("Training & Evaluating Random Forest Models for Memory Usage...")
+    print("Training & Evaluating Random Forest Regressor Models for Memory Usage...")
     train_memory_model()
 
     print("------------------------------")
-    print("Training & Evaluating Random Forest Models for CPU Usage...")
+    print("Training & Evaluating Random Forest Regressor Models for CPU Usage...")
     train_cpu_model()
     print("------------------------------")
