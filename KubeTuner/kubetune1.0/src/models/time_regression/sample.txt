@@ -1,0 +1,96 @@
+
+# ----------- VISUALIZATION FUNCTIONS -----------
+
+def plot_predict_memory_model(df_export):
+    # Bar plot: Current vs Predicted vs Final Recommended Memory Request (Sample)
+    sample = df_export.sample(min(20, len(df_export)), random_state=42).reset_index(drop=True)
+    x = np.arange(len(sample))
+    bar_width = 0.25
+    plt.figure(figsize=(14, 6))
+    bars1 = plt.bar(x - bar_width, sample['memrequest'], width=bar_width, label='Current Request', color='#1976D2')
+    bars2 = plt.bar(x, sample['predicted_memrequest'], width=bar_width, label='Predicted Request', color='#43A047')
+    bars3 = plt.bar(x + bar_width, sample['recommended_memrequest'], width=bar_width, label='Final Recommended', color='#FFA000')
+    plt.xticks(x, sample['podname'], rotation=45, ha='right')
+    plt.xlabel('Pod')
+    plt.ylabel('Memory (MB)')
+    plt.title('Current vs Predicted vs Final Recommended Memory Request (Sample)')
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+    # Scatter plot: Memory Usage vs Memory Request
+    plt.figure(figsize=(7, 5))
+    plt.scatter(df_export['memusage'], df_export['memrequest'], alpha=0.5, label='Current')
+    plt.scatter(df_export['memusage'], df_export['predicted_memrequest'], alpha=0.5, label='Predicted')
+    plt.scatter(df_export['memusage'], df_export['recommended_memrequest'], alpha=0.5, label='Recommended')
+    plt.xlabel('Memory Usage (MB)')
+    plt.ylabel('Memory Request (MB)')
+    plt.title('Memory Usage vs Requests')
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+    # Cumulative savings plot
+    df_export['savings_MB'] = df_export['memrequest'] - df_export['recommended_memrequest']
+    df_export['savings_MB'] = df_export['savings_MB'].clip(lower=0)
+    df_sorted = df_export.sort_values('savings_MB', ascending=False)
+    df_sorted['cumulative_savings'] = df_sorted['savings_MB'].cumsum()
+    plt.figure(figsize=(10, 5))
+    plt.plot(df_sorted['cumulative_savings'].values, color='purple')
+    plt.xlabel('Pods (sorted by savings)')
+    plt.ylabel('Cumulative Savings (MB)')
+    plt.title('Cumulative Memory Savings if All Suggestions Applied')
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+def plot_predict_cpu_model(df_export):
+    # Bar plot: Current vs Predicted vs Final Recommended CPU Request (Sample)
+    sample = df_export.sample(min(20, len(df_export)), random_state=42).reset_index(drop=True)
+    x = np.arange(len(sample))
+    bar_width = 0.25
+    plt.figure(figsize=(14, 6))
+    bars1 = plt.bar(x - bar_width, sample['cpurequest'], width=bar_width, label='Current Request', color='#1976D2')
+    bars2 = plt.bar(x, sample['predicted_cpurequest'], width=bar_width, label='Predicted Request', color='#43A047')
+    bars3 = plt.bar(x + bar_width, sample['recommended_cpurequest'], width=bar_width, label='Final Recommended', color='#FFA000')
+    plt.xticks(x, sample['podname'], rotation=45, ha='right')
+    plt.xlabel('Pod')
+    plt.ylabel('CPU')
+    plt.title('Current vs Predicted vs Final Recommended CPU Request (Sample)')
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+    # Scatter plot: CPU Usage vs CPU Requests
+    plt.figure(figsize=(7, 5))
+    plt.scatter(df_export['cpuusage'], df_export['cpurequest'], alpha=0.5, label='Current')
+    plt.scatter(df_export['cpuusage'], df_export['predicted_cpurequest'], alpha=0.5, label='Predicted')
+    plt.scatter(df_export['cpuusage'], df_export['recommended_cpurequest'], alpha=0.5, label='Recommended')
+    plt.xlabel('CPU Usage')
+    plt.ylabel('CPU Request')
+    plt.title('CPU Usage vs Requests')
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+    # Pie chart: Proportion of Pods with Increased vs Decreased Final CPU Request
+    increase_count = (df_export['recommended_cpurequest'] > df_export['cpurequest']).sum()
+    decrease_count = (df_export['recommended_cpurequest'] < df_export['cpurequest']).sum()
+    equal_count = (df_export['recommended_cpurequest'] == df_export['cpurequest']).sum()
+    labels = ['Increase', 'Decrease', 'No Change']
+    sizes = [increase_count, decrease_count, equal_count]
+    colors = ['#FFA000', '#43A047', '#1976D2']
+    plt.figure(figsize=(6, 6))
+    plt.pie(sizes, labels=labels, autopct='%1.1f%%', colors=colors, startangle=140, explode=(0.05, 0.05, 0.05))
+    plt.title('Pods: Final Recommended CPU vs Current Request')
+    plt.tight_layout()
+    plt.show()
+    # Cumulative savings plot
+    df_export['savings_CPU'] = df_export['cpurequest'] - df_export['recommended_cpurequest']
+    df_export['savings_CPU'] = df_export['savings_CPU'].clip(lower=0)
+    df_sorted = df_export.sort_values('savings_CPU', ascending=False)
+    df_sorted['cumulative_savings'] = df_sorted['savings_CPU'].cumsum()
+    plt.figure(figsize=(10, 5))
+    plt.plot(df_sorted['cumulative_savings'].values, color='purple')
+    plt.xlabel('Pods (sorted by savings)')
+    plt.ylabel('Cumulative Savings (CPU)')
+    plt.title('Cumulative CPU Savings if All Suggestions Applied')
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
