@@ -6,7 +6,6 @@ from sklearn.model_selection import train_test_split, RandomizedSearchCV
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
 
-
 def load_aks_data():
     """
     Loads the AKS02-Data.xlsx file from the correct data directory,
