@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
-from sklearn.tree import DecisionTreeRegressor
 import xgboost as xgb
 from xgboost import plot_importance, plot_tree
 from sklearn.metrics import mean_squared_error, r2_score
@@ -10,27 +9,8 @@ import seaborn as sns
 from pathlib import Path
 import evaluate as evaluate
 import joblib
+from utils import create_features
 
-def create_features(df, label=None):
-    """
-    Creates time series features from datetime index
-    """
-    df['date'] = df.index
-    df['hour'] = df['date'].dt.hour
-    df['dayofweek'] = df['date'].dt.dayofweek
-    df['quarter'] = df['date'].dt.quarter
-    df['month'] = df['date'].dt.month
-    df['year'] = df['date'].dt.year
-    df['dayofyear'] = df['date'].dt.dayofyear
-    df['dayofmonth'] = df['date'].dt.day
-    df['weekofyear'] = df['date'].dt.isocalendar().week
-
-    X = df[['hour','dayofweek','quarter','month','year',
-           'dayofyear','dayofmonth','weekofyear']]
-    if label:
-        y = df[label]
-        return X, y
-    return X
 
 def train_memory_model():
     # -----------------------------
@@ -52,10 +32,10 @@ def train_memory_model():
     model = xgb.XGBRegressor(n_estimators=1000)
     model.fit(X_train, y_train,
         eval_set=[(X_train, y_train), (X_test, y_test)],
-        verbose=True) # Change verbose to True if you want to see it train
+        verbose=False) # Change verbose to True if you want to see it train
 
     # Save the  model
-    model_path = Path(__file__).resolve().parents[0] / 'output' / 'kubetune_xgb_model_memoryusage.pkl'
+    model_path = Path(__file__).resolve().parents[0] / 'output' / 'kubetune_xgb_model_usage.pkl'
     model_path.parent.mkdir(parents=True, exist_ok=True)  # Ensure the directory exists
     joblib.dump(model, model_path)
 
@@ -65,7 +45,7 @@ def train_memory_model():
 if __name__ == "__main__":
 
     print("------------------------------")
-    print("Training & Evaluating Decision Tree Models for Memory Usage...")
+    print("Training & Evaluating xgboost  Models for Usage...")
     train_memory_model()
 
     # print("------------------------------")
