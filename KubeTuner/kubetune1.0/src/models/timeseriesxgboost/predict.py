@@ -62,7 +62,7 @@ def predict_usage_model():
         return
 
     df_test['memusage_Prediction'] = model.predict(X_test)
-    df_all = pd.concat([df_test, df_train], sort=False)
+    df_all = pd.concat([df_test], sort=False)
 
     # Remove timezone info from index if present
     if df_all.index.tz is not None:
