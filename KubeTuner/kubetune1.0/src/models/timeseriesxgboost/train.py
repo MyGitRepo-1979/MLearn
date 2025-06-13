@@ -13,22 +13,38 @@ from utils import create_features
 
 
 def train_memory_model():
+
     # -----------------------------
     # 1. Load and Preprocess Data
     # -----------------------------
-    # Path to your Excel file
+    # Path to your Json file
     base_dir_input = Path(__file__).resolve().parents[3]
-    file_path = base_dir_input / 'data' / 'AEP_Energy_consumption.xlsx'
+    file_path = base_dir_input / 'data' / 'aks01_pod_metrics.json'
+    df = pd.read_json(file_path)
+    df['memUsage'] = (df['memUsage'].astype(float))/(1014 * 1024)  # Ensure memUsage is float
+    df['memLimit'] = (df['memLimit'].astype(float))/(1014 * 1024)  # Ensure memUsage is float
 
-    df = pd.read_excel(file_path, sheet_name="AEP_hourly",index_col=[0], parse_dates=[0])
+    
+    df_final = df[['collectionTimestamp', 'controllerName', 'pod', 'namespace', 'container', 'memUsage', 'memLimit']].copy()
+    df_final = df_final.set_index('collectionTimestamp')
+    df_final.index = pd.to_datetime(df_final.index)  # Convert timestamp to datetime
 
-    split_date = '01-Jan-2015'
-    df_train = df.loc[df.index <= split_date].copy()
-    df_test = df.loc[df.index > split_date].copy()
+    # Split by row position, not by index value
+    split_index = -500
+    df_train = df_final.iloc[:split_index]
+    df_test = df_final.iloc[split_index:]
 
-    X_train, y_train = create_features(df_train, label='AEP_MW')
-    X_test, y_test = create_features(df_test, label='AEP_MW')
+    X_train, y_train = create_features(df_train, label='memUsage')
+    X_test, y_test = create_features(df_test, label='memUsage')
 
+    # Before training, check and clean your data to remove or replace inf and NaN values:
+    X_train = X_train.replace([np.inf, -np.inf], np.nan)
+    X_test = X_test.replace([np.inf, -np.inf], np.nan)
+    X_train = X_train.fillna(0)
+    X_test = X_test.fillna(0)
+
+    # -----------------------------
+    # 2. Train the XGBoost Model
     model = xgb.XGBRegressor(n_estimators=1000)
     model.fit(X_train, y_train,
         eval_set=[(X_train, y_train), (X_test, y_test)],
