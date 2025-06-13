@@ -47,8 +47,8 @@ def predict_usage_model():
 
     # Split by row position, not by index value
     split_index = -500
-    df_train = df_final.iloc[:split_index]
-    df_test = df_final.iloc[split_index:]
+    df_train = df_final.iloc[:split_index].copy()
+    df_test = df_final.iloc[split_index:].copy()
 
     X_test, y_test = create_features(df_test, label='memUsage')
 
