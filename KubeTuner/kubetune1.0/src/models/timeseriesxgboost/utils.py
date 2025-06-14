@@ -35,14 +35,11 @@ def create_features(df, label=None):
     df['dayofmonth'] = df['date'].dt.day
     df['weekofyear'] = df['date'].dt.isocalendar().week
     df['controllerName'] = df['controllerName'].astype('category').cat.codes
-    df['podInstance'] = df['pod'].astype('category').cat.codes
-    df['namespace'] = df['namespace'].astype('category').cat.codes
-    df['container'] = df['container'].astype('category').cat.codes
-    df['memUtilization'] = (df['memUsage'].astype(float) / df['memLimit'].astype(float)).round(4)
+    df['memUtilization'] = (df['memUsage'].astype(float) / df['memRequest'].astype(float)).round(2)
 
     X = df[['hour','dayofweek','quarter','month','year',
-           'dayofyear','dayofmonth','weekofyear','controllerName','podInstance',
-           'namespace','container','memUtilization'
+           'dayofyear','dayofmonth','weekofyear','controllerName',
+           'memUtilization'
            ]]
     if label:
         y = df[label]

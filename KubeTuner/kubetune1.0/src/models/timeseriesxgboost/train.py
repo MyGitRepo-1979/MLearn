@@ -21,13 +21,20 @@ def train_memory_model():
     base_dir_input = Path(__file__).resolve().parents[3]
     file_path = base_dir_input / 'data' / 'aks01_pod_metrics.json'
     df = pd.read_json(file_path)
-    df['memUsage'] = (df['memUsage'].astype(float))/(1014 * 1024)  # Ensure memUsage is float
-    df['memLimit'] = (df['memLimit'].astype(float))/(1014 * 1024)  # Ensure memUsage is float
+
+   
+    # Remove rows with zeros to avoid log errors
+    df = df[(df['memRequest'] > 0)]
+   
+    
+    df['memUsage'] = ((df['memUsage'].astype(float))/(1014 * 1024)).round(2)  # Ensure memUsage is float
+    df['memRequest'] = ((df['memRequest'].astype(float))/(1014 * 1024)).round(2)  # Ensure memUsage is float
 
     
-    df_final = df[['collectionTimestamp', 'controllerName', 'pod', 'namespace', 'container', 'memUsage', 'memLimit']].copy()
+    df_final = df[['collectionTimestamp', 'controllerName','memUsage', 'memRequest']].copy()
     df_final = df_final.set_index('collectionTimestamp')
     df_final.index = pd.to_datetime(df_final.index)  # Convert timestamp to datetime
+
 
     # Split by row position, not by index value
     split_index = -500
