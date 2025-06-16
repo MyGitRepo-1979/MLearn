@@ -23,6 +23,7 @@ def plot_feature_importance(importances, feature_names):
     plt.show()
 
 def create_features(df, label=None):
+    import numpy as np
     
     # Creates time series features from datetime index
     df['date'] = df.index
@@ -35,11 +36,10 @@ def create_features(df, label=None):
     df['dayofmonth'] = df['date'].dt.day
     df['weekofyear'] = df['date'].dt.isocalendar().week
     df['controllerName'] = df['controllerName'].astype('category').cat.codes
-    df['memUtilization'] = (df['memUsage'].astype(float) / df['memRequest'].astype(float)).round(2)
+    #df['memUtilization'] = (df['memUsage'] / df['memLimit']).replace([np.inf, -np.inf], np.nan).fillna(0).round(2)
 
     X = df[['hour','dayofweek','quarter','month','year',
-           'dayofyear','dayofmonth','weekofyear','controllerName',
-           'memUtilization'
+           'dayofyear','dayofmonth','weekofyear','controllerName' , 'memRequest','memLimit',        
            ]]
     if label:
         y = df[label]
