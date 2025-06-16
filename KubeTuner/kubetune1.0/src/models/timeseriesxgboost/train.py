@@ -27,8 +27,8 @@ def train_memory_model():
     df = df[(df['memRequest'] > 0)]
    
     
-    df['memUsage'] = ((df['memUsage'].astype(float))/(1014 * 1024)).round(2)  # Ensure memUsage is float
-    df['memRequest'] = ((df['memRequest'].astype(float))/(1014 * 1024)).round(2)  # Ensure memUsage is float
+    df['memUsage'] = ((df['memUsage'].astype(float))/(1024 * 1024)).round(2)  # Ensure memUsage is float
+    df['memRequest'] = ((df['memRequest'].astype(float))/(1024 * 1024)).round(2)  # Ensure memUsage is float
 
     
     df_final = df[['collectionTimestamp', 'controllerName','memUsage', 'memRequest']].copy()

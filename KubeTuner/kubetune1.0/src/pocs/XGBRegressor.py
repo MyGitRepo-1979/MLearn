@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 # ========================
 # Step 1: Load JSON File
 # ========================
-base_dir = Path(__file__).resolve().parents[3]
+base_dir = Path(__file__).resolve().parents[2]
 file_path = base_dir / 'data' / 'aks01_pod_metrics.json'
 
 df = pd.read_json(file_path)
