@@ -6,28 +6,8 @@ import matplotlib.pyplot as plt
 from utils import create_features
 
 def plot_predict_usage_model(df_all):
-    _ = df_all[['memUsage','memusage_Prediction']].plot(figsize=(15, 5))
-    # Plot the forecast with the actuals
-    f, ax = plt.subplots(1)
-    f.set_figheight(5)
-    f.set_figwidth(15)
-    _ = df_all[['memusage_Prediction','memUsage']].plot(ax=ax,
-                                                style=['-','.'])
-    ax.set_xbound(lower='01-01-2015', upper='02-01-2015')
-    ax.set_ylim(0, 60000)
-    plot = plt.suptitle('January 2015 Forecast vs Actuals')
-    plt.show()
-
-        # Plot the forecast with the actuals
-    f, ax = plt.subplots(1)
-    f.set_figheight(5)
-    f.set_figwidth(15)
-    _ = df_all[['memusage_Prediction','memUsage']].plot(ax=ax,
-                                                style=['-','.'])
-    ax.set_xbound(lower='01-01-2015', upper='01-08-2015')
-    ax.set_ylim(0, 60000)
-    plot = plt.suptitle('First Week of January Forecast vs Actuals')
-    plt.show()
+    return df_all
+    
 
 def predict_usage_model():
 
@@ -35,58 +15,65 @@ def predict_usage_model():
     # 1. Load and Preprocess Data
     # -----------------------------
     # Path to your Json file
-    base_dir_input = Path(__file__).resolve().parents[3]
-    #file_path = base_dir_input / 'data' / 'aks01_pod_metrics.json'
-    file_path = base_dir_input / 'data' / 'pod_metrics.json'
-    df = pd.read_json(file_path)
-    # Remove rows with zeros to avoid log errors
-    df = df[(df['memRequest'] > 0) & (df['memLimit'] > 0) & (df['memUsage'] > 0)]
+    base_dir_input = Path(__file__).resolve().parents[0]
+    file_path = base_dir_input / 'output' / 'aks01_pod_metrics_processed.json'
+    df = pd.read_json(file_path, lines=True)
+    # -------------------- Predict for All Pods --------------------
+    features = [
+        'cpuRequest', 'cpuLimit', 
+        'memRequest', 'memLimit', 'memUsage',
+        'avg_cpu_5min', 'avg_mem_5min', 'max_cpu', 'max_mem',
+        'hour', 'dayofweek', 'is_weekend',
+        'cpu_utilization_ratio', 'mem_utilization_ratio',
+        'cat_deployment', 'cat_namespace', 'cat_controllerName', 'cat_controllerKind'
+    ]
+    X_all = df[features]
 
-    df['memUsage'] = ((df['memUsage'].astype(float))/(1014 * 1024)).round(2)  # Ensure memUsage is float
-    df['memRequest'] = ((df['memRequest'].astype(float))/(1014 * 1024)).round(2)  # Ensure memUsage is float
-    df['memLimit'] = ((df['memLimit'].astype(float))/(1014 * 1024)).round(2)  # Ensure memUsage is float
-
-    #df_final = df[['collectionTimestamp', 'controllerName','memUsage', 'memLimit','memRequest']].copy()
-    df_final = df[['collectionTimestamp', 'controllerName','memRequest','memLimit','memUsage']].copy()
-    df_final = df_final.set_index('collectionTimestamp')
-    df_final.index = pd.to_datetime(df_final.index)  # Convert timestamp to datetime
-
-    # Split by row position, not by index value
-    split_index = -500
-    df_train = df_final.iloc[:split_index].copy()
-    df_test = df_final.iloc[split_index:].copy()
-
-    X_test, y_test = create_features(df_test, label='memUsage')
-
-
-    # Load the model
-    model_file_path = Path(__file__).resolve().parents[0] / 'output' / 'kubetune_xgb_model_usage.pkl'
+        # Load the model
+    cpu_model_file_path = Path(__file__).resolve().parents[0] / 'output' / 'kubetune_xgb_model_cpuusage.pkl'
     try:
-        model = joblib.load(model_file_path)
+        cpu_model = joblib.load(cpu_model_file_path)
     except FileNotFoundError:
-        print(f"Model file not found: {model_file_path}")
+        print(f"Model file not found: {cpu_model_file_path}")
         return
+    
+    mem_model_file_path = Path(__file__).resolve().parents[0] / 'output' / 'kubetune_xgb_model_memusage.pkl'
+    try:
+        mem_model = joblib.load(mem_model_file_path)
+    except FileNotFoundError:
+        print(f"Model file not found: {mem_model_file_path}")
+        return
+    
+    # Predict CPU and Memory usage (in cores and MB)
+    df['cpuRequest_predicted'] = (cpu_model.predict(X_all)).round(4)  # Ensure cpuRequest is float and rounded to 4 decimal places
+    df['memRequest_predicted'] = (mem_model.predict(X_all)).round(2)  # Ensure memRequest is float and rounded to 2 decimal places
 
-    df_test['memUsage_Prediction'] = (model.predict(X_test)).round(2)
-    df_all = pd.concat([df_test], sort=False)
 
-    # Remove timezone info from index if present
-    if df_all.index.tz is not None:
-        df_all.index = df_all.index.tz_localize(None)
-    # Remove timezone info from datetime columns if any
-    for col in df_all.select_dtypes(include=['datetimetz']).columns:
-        df_all[col] = df_all[col].dt.tz_localize(None)
-  
+    # CPU recommendation logic:
+    # If predicted request < actual usage, recommend usage + 20%; else, predicted + 20%
+    df['recommended_cpuRequest'] = (np.where(
+        df['cpuRequest_predicted'] < df['cpuUsage'],
+        df['cpuUsage'] + 0.2 * df['cpuUsage'],
+        df['cpuRequest_predicted'] + 0.2 * df['cpuRequest_predicted']
+    )).round(4)  # Ensure cpuRequest is float and rounded to 4 decimal places
+
+    # Memory recommendation logic:
+    # If predicted request < actual usage, recommend usage + 20%; else, predicted + 20%
+    df['recommended_memRequest'] = (np.where(
+        df['memRequest_predicted'] < df['memUsage'],
+        df['memUsage'] + 0.2 * df['memUsage'],
+        df['memRequest_predicted'] + 0.2 * df['memRequest_predicted']
+    )).round(2)  # Ensure memRequest is float and rounded to 2 decimal places
+ 
+    df_max = df.loc[df.groupby('controllerName')[
+        ['cpuRequest_predicted', 'memRequest_predicted', 'recommended_cpuRequest', 'recommended_memRequest']
+    ].idxmax().values.flatten()]
     # Export to Excel
     # Export the Results to Excel
     base_dir_output = Path(__file__).resolve().parents[0]
     output_file_path = base_dir_output / 'output' / 'kubetune_recommended_usage.xlsx'
-    df_all.to_excel(output_file_path,index=False)
+    df_max.to_excel(output_file_path,index=False)
     print(f"Predictions saved to {output_file_path}") 
-
-    # print(f"Predictions saved to {output_file_path}")
-    # Plot the results
-    #plot_predict_usage_model(df_all)
      
 if __name__ == "__main__":
     predict_usage_model()
