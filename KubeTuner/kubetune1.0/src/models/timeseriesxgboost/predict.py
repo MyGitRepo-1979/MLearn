@@ -68,13 +68,82 @@ def predict_usage_model():
     df_max = df.loc[df.groupby('controllerName')[
         ['cpuRequest_predicted', 'memRequest_predicted', 'recommended_cpuRequest', 'recommended_memRequest']
     ].idxmax().values.flatten()]
-    # Export to Excel
-    # Export the Results to Excel
+
+    # Group by controllerName and get max for relevant columns
+    grouped = df.groupby('controllerName', as_index=False).agg({
+        'cpuRequest': 'max',
+        'cpuLimit': 'max',
+        'cpuUsage': 'max',
+        'memRequest': 'max',
+        'memLimit': 'max',
+        'memUsage': 'max',
+        'cpuRequest_predicted': 'max',
+        'memRequest_predicted': 'max',
+        'recommended_cpuRequest': 'max',
+        'recommended_memRequest': 'max'
+    })
+
+    # Calculate max recommended_cpuRequest and recommended_memRequest per controllerName
+    max_recommended = df.groupby('controllerName').agg({
+        'recommended_cpuRequest': 'max',
+        'recommended_memRequest': 'max'
+    }).rename(columns={
+        'recommended_cpuRequest': 'max_recommended_cpuRequest',
+        'recommended_memRequest': 'max_recommended_memRequest'
+    })
+
+    # Merge these max values back to the original dataframe
+    df = df.merge(max_recommended, on='controllerName', how='left')
+
+    # Create the recommended_request column as a string or tuple
+    df['recommended_request'] = (
+        'cpu: ' + df['max_recommended_cpuRequest'].astype(str) +
+        ', mem: ' + df['max_recommended_memRequest'].astype(str)
+    )
+
+    # Select and order columns for output
+    output_columns = [
+        'controllerName',
+        'cpuRequest',
+        'cpuLimit',
+        'cpuUsage',
+        'memRequest',
+        'memLimit',
+        'memUsage',
+        'cpuRequest_predicted',
+        'memRequest_predicted',
+        'recommended_cpuRequest',
+        'recommended_memRequest',
+        'recommended_request'
+    ]
+    df = df[output_columns]
+
+    # Save to Excel
     base_dir_output = Path(__file__).resolve().parents[0]
     output_file_path = base_dir_output / 'output' / 'kubetune_recommended_usage.xlsx'
-    df_max.to_excel(output_file_path,index=False)
+    df.to_excel(output_file_path, index=False)
+
     print(f"Predictions saved to {output_file_path}") 
      
+def main():
+    base_dir_output = Path(__file__).resolve().parents[0]
+    output_file_path = base_dir_output / 'output' / 'kubetune_recommended_usage.xlsx'
+
+    # Now read it for correlation
+    df_corr = pd.read_excel(output_file_path)
+
+    # Compute correlation matrix (excluding non-numeric columns)
+    corr = df_corr.select_dtypes(include=[float, int]).corr()
+
+    # Plot heatmap
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(corr, annot=True, cmap='coolwarm')
+    plt.title('Correlation Heatmap')
+    plt.show()
+
 if __name__ == "__main__":
     predict_usage_model()
-   
+    main()
