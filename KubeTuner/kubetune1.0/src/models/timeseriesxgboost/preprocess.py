@@ -86,7 +86,7 @@ def prepare_preprocess_data():
     # Step 5: Select Features & Targets
     # ========================
     features = [
-        'timestamp', 'cpuRequest', 'cpuLimit', 'cpuUsage',
+        'timestamp', 'controllerName','cpuRequest', 'cpuLimit', 'cpuUsage',
         'memRequest', 'memLimit', 'memUsage',
         'avg_cpu_5min', 'avg_mem_5min', 'max_cpu', 'max_mem',
         'hour', 'dayofweek', 'is_weekend',
