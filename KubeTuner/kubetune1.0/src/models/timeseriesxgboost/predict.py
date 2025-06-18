@@ -83,7 +83,7 @@ def predict_usage_model():
         'recommended_memRequest': 'max'
     })
 
-    # Calculate max recommended_cpuRequest and recommended_memRequest per controllerName
+    # Calculate max recommended_cpuRequest and recommended_memRequest for each controllerName
     max_recommended = df.groupby('controllerName').agg({
         'recommended_cpuRequest': 'max',
         'recommended_memRequest': 'max'
@@ -92,10 +92,10 @@ def predict_usage_model():
         'recommended_memRequest': 'max_recommended_memRequest'
     })
 
-    # Merge these max values back to the original dataframe
+    # Merge these max values back to the original DataFrame
     df = df.merge(max_recommended, on='controllerName', how='left')
 
-    # Create the recommended_request column as a string or tuple
+    # Create the recommended_request column as a string
     df['recommended_request'] = (
         'cpu: ' + df['max_recommended_cpuRequest'].astype(str) +
         ', mem: ' + df['max_recommended_memRequest'].astype(str)
@@ -118,32 +118,16 @@ def predict_usage_model():
     ]
     df = df[output_columns]
 
+    # Sort by controllerName so all pods of a controller are together
+    df = df.sort_values(by='controllerName')
+
     # Save to Excel
     base_dir_output = Path(__file__).resolve().parents[0]
     output_file_path = base_dir_output / 'output' / 'kubetune_recommended_usage.xlsx'
     df.to_excel(output_file_path, index=False)
 
     print(f"Predictions saved to {output_file_path}") 
-     
-def main():
-    base_dir_output = Path(__file__).resolve().parents[0]
-    output_file_path = base_dir_output / 'output' / 'kubetune_recommended_usage.xlsx'
-
-    # Now read it for correlation
-    df_corr = pd.read_excel(output_file_path)
-
-    # Compute correlation matrix (excluding non-numeric columns)
-    corr = df_corr.select_dtypes(include=[float, int]).corr()
-
-    # Plot heatmap
-    import seaborn as sns
-    import matplotlib.pyplot as plt
-
-    plt.figure(figsize=(10, 8))
-    sns.heatmap(corr, annot=True, cmap='coolwarm')
-    plt.title('Correlation Heatmap')
-    plt.show()
 
 if __name__ == "__main__":
     predict_usage_model()
-    main()
+
