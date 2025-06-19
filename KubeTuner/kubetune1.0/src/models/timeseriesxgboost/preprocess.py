@@ -36,7 +36,6 @@ def prepare_preprocess_data():
         (df['memLimit'] == 0) &
         (df['memUsage'] == 0)
     )]
-    
     df['memUsage'] = ((df['memUsage'].astype(float))/(1024 * 1024)).round(2)  # Ensure memUsage is float
     df['memRequest'] = ((df['memRequest'].astype(float))/(1024 * 1024)).round(2)  # Ensure memUsage is float
     df['memLimit'] = ((df['memLimit'].astype(float))/(1024 * 1024)).round(2)
@@ -57,18 +56,18 @@ def prepare_preprocess_data():
     # Step 3: Create Utilization Features
     # ========================
      # Handle division by zero in the ratio columns only
-    df['cpu_utilization_ratio'] = (np.where(
+    df['cpu_utilization_ratio'] = np.where(
         df['cpuLimit'] == 0, 0, df['cpuUsage'] / df['cpuLimit']).round(4)
-    )
-    df['mem_utilization_ratio'] = (np.where(
+    
+    df['mem_utilization_ratio'] = np.where(
         df['memLimit'] == 0, 0, df['memUsage'] / df['memLimit']).round(2)
-    )
+    
 
     # ========================
     # Step 4: Encode Categorical Features
     # ========================
     df['cat_deployment'] = LabelEncoder().fit_transform(df['deployment'])
-    df['cat_namespace'] = LabelEncoder().fit_transform(df['deployment'])
+    df['cat_namespace'] = LabelEncoder().fit_transform(df['namespace'])
     df['cat_controllerName'] = LabelEncoder().fit_transform(df['controllerName'])
     df['cat_controllerKind'] = LabelEncoder().fit_transform(df['controllerKind'])
 
