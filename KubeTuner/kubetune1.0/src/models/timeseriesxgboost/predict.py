@@ -21,7 +21,7 @@ def predict_usage_model():
     # -----------------------------
     features = [
         'cpuRequest', 'cpuLimit', 
-        'memRequest', 'memLimit', 'memUsage',
+        'memRequest', 'memLimit', 
         'avg_cpu_5min', 'avg_mem_5min', 'max_cpu', 'max_mem',
         'hour', 'dayofweek', 'is_weekend',
         'cpu_utilization_ratio', 'mem_utilization_ratio',

@@ -5,18 +5,24 @@ from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import mean_absolute_error, r2_score, classification_report
 from xgboost import XGBRegressor
-import plotly.express as px
-import pandas as pd
-from sklearn.model_selection import train_test_split
-from xgboost import plot_importance, plot_tree
-from sklearn.metrics import mean_squared_error, r2_score
-from pathlib import Path
+from sklearn.metrics import mean_squared_error
 import evaluate as evaluate
 import joblib
 from utils import create_features
 
 
 def train_pod_usage_model():
+
+    """
+    Train and evaluate XGBoost regression models for CPU and memory usage prediction,
+    and RandomForest classifiers for under-provisioning detection.
+
+    Loads preprocessed pod metrics data, prepares features and targets, splits the data
+    chronologically, trains models, saves them to disk, and evaluates their performance.
+
+    Returns:
+        None
+    """
 
     # -----------------------------
     # 1. Load and Preprocess Data
@@ -37,7 +43,7 @@ def train_pod_usage_model():
     # Select features for model training
     features = [
         'cpuRequest', 'cpuLimit', 
-        'memRequest', 'memLimit', 'memUsage',
+        'memRequest', 'memLimit', 
         'avg_cpu_5min', 'avg_mem_5min', 'max_cpu', 'max_mem',
         'hour', 'dayofweek', 'is_weekend',
         'cpu_utilization_ratio', 'mem_utilization_ratio',
