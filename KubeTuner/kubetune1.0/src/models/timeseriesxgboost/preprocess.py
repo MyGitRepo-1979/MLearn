@@ -99,7 +99,7 @@ def prepare_preprocess_data():
 if __name__ == "__main__":
 
     print("------------------------------")
-    print("Preprocessing and crete feature from raw data.")
+    print("Preprocessing and create feature from raw data.")
     df=prepare_preprocess_data()
     # Save the preprocessed data
     save_processed_data(df)
