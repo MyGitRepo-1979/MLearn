@@ -28,6 +28,8 @@ def prepare_preprocess_data():
     
     # 1. Load the JSON file &  Remove rows with all zero values in specified columns
     df = pd.read_json(file_path)
+    df= df[(df['namespace'] == 'msks')]
+           
     df = df[~(
         (df['cpuRequest'] == 0) &
         (df['cpuLimit'] == 0) &

@@ -2,39 +2,26 @@
 from pathlib import Path
 import pandas as pd
 from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import mean_absolute_error, r2_score, classification_report
 from xgboost import XGBRegressor
 from sklearn.metrics import mean_squared_error
 import evaluate as evaluate
-import joblib
-from utils import create_features
 from prophet import Prophet
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import LabelEncoder
 
-def fit_model(growth,df_train,regressor):
-    m = Prophet(growth=growth, seasonality_mode="multiplicative", daily_seasonality=15)
-    m.add_regressor("location_4", mode="multiplicative")
+
+def fit_model(growth,df_train,controllerName):
+
+    # m = Prophet(growth=growth, seasonality_mode="multiplicative", daily_seasonality=15)
+    m = Prophet()
     m.fit(df_train)
-    preds = pd.merge(
-        test,
-        m.predict(test),
-        on="ds",
-        how="inner"
-    )
 
-        # future = cpu_model.make_future_dataframe(periods=30)# Predict next 30 days
-    preds = m.make_future_dataframe(periods=30, freq='min')
+    df = m.make_future_dataframe(periods=30, freq='D') # Predict next 30 days
+    # Forecast
+    df_prediction = m.predict(df)
+    df_prediction['controllerName'] = controllerName
 
-      
-    # # Use a sample encoded value (e.g., mean or specific controller)
-    preds['controller_encoded'] = df['controller_encoded']
-
-    # # Forecast
-    forecast = m.predict(future)
-    # mape = ((preds["yhat"] - preds["y"]).abs() / preds_linear["y"]).mean()
-    # return m, preds, mape
+    return m, df_prediction[['ds', 'controllerName','yhat']]
 
 def train_pod_usage_model():
 
@@ -60,22 +47,37 @@ def train_pod_usage_model():
     df['ds'] = pd.to_datetime(df['timestamp'])
     df['y'] = df['cpuUsage']  # Assuming 'cpu_usage' is the target variable
     
-    # Encode controllerName
-    encoder = LabelEncoder()
-    df['controller_encoded'] = encoder.fit_transform(df['controllerName'])
-
-      
-    # Step 2: Initialize and train the model
-    # cpu_model = Prophet()
-    # cpu_model.add_regressor('controller_encoded')
-    # cpu_model.fit(df[['ds', 'y', 'controller_encoded']])
-    df_train=df[['ds', 'y', 'controller_encoded']]
      
-    # # Save the  model
-    # cpu_model_path = Path(__file__).resolve().parents[0] / 'output' / 'kubetune_prophet_model_cpuusage.pkl'
-    # cpu_model_path.parent.mkdir(parents=True, exist_ok=True)  # Ensure the directory exists
-    # joblib.dump(cpu_model, cpu_model_path)
-    print(f"CPU Usage model saved to {cpu_model_path}")
+    # Step 2: Initialize and train the model
+    df_train=df[['ds', 'y', 'controllerName']]
+    
+    df_all = pd.DataFrame(columns=['ds', 'y', 'controllerName'])
+    unique_controllers = df_train['controllerName'].unique()
+
+    for controller in unique_controllers:
+        print(f"Processing controller: {controller}")
+        df_controller_train = df_train[df_train['controllerName'] == controller].dropna()
+     
+        if len(df_controller_train) < 2:
+            print(f"Skipping {controller} due to insufficient data.")
+            continue
+        cpu_model, df_prediction = fit_model(growth='linear',df_train=df_controller_train,controllerName=controller)
+        if df_all is None:
+            df_all = df_prediction
+        else:
+            df_all = pd.concat([df_all, df_prediction], ignore_index=True)
+
+    df_all = df_all.drop(['y'], axis=1)
+    # print(df_all.head(30))
+    model_dir = Path(__file__).resolve().parents[0] / 'output'
+        # -----------------------------
+    # 8. Export to Excel
+    # -----------------------------
+    output_path = model_dir / 'kubetune_recommended_usage.xlsx'
+    with pd.ExcelWriter(output_path, engine='openpyxl', mode='w') as writer:
+        df_all.to_excel(writer, sheet_name='Recommendations', index=False)
+
+    print(f"Predictions saved to {output_path}")
 
     # # Save the  model
     # mem_model_path = Path(__file__).resolve().parents[0] / 'output' / 'kubetune_xgb_model_memusage.pkl'
